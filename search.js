@@ -7,10 +7,10 @@ var operation = {
 		// This method initializes the searchObject data member
 		this.searchObject = searchObject;
 		this.searchResult = []; //Empty result array. Push the resulting object into this array
-		this.chunkSize = 100;
+		this.chunkSize = 1000;
 		this.limit = 20;
 	},
-	order: function(sortBy=null, sortOrder='asc') {
+	order: function(sortBy, sortOrder) {
 		sortBy = sortBy.split(' ');
 
 		// Check if the input contains orderby keyword
@@ -22,13 +22,18 @@ var operation = {
 
 		// Sort the object in ascending order.
 		if(sortOrder === 'desc') {
-			this.searchObject.sort((a, b) => (operation.getNestedObject(a,dot) <= operation.getNestedObject(b,dot)) ? 1 : -1)
+
+			this.searchObject.sort(function (a, b) {
+			  return a[sortBy] <= b[sortBy] ? 1 : -1;
+			});
 			
 		} else {
 			// Sort the object in descending order.
-			this.searchObject.sort((a, b) => (operation.getNestedObject(a,dot) >= operation.getNestedObject(b,dot)) ? 1 : -1)
+			this.searchObject.sort(function (a, b) {
+			  return a[sortBy] >= b[sortBy] ? 1 : -1;
+			});
 		}
-
+		
 		return this;
 	},
 	select: function(searchField, searchOperator, searchFilter, searchColumns) {
@@ -45,7 +50,7 @@ var operation = {
 			myChunk = this.searchObject.slice(i, i+this.chunkSize);
 			for(let j=0;j<myChunk.length;j++) {
 				var obj = {};
-				let str = operation.getNestedObject(myChunk[j],fieldSplit);
+				let str = myChunk[j][searchField];
 				if(operation.checkOperation(str,searchFilter,searchOperator)) { // Check if the matching string found
 					if(searchColumns === '*') { //If search columns is * then return the full object
 						this.searchResult.push(myChunk[j]);
@@ -53,7 +58,7 @@ var operation = {
 					} else { // Else return the columns that are selected
 						for(let k=0; k<comma.length;k++) {
 							let dot = comma[k].split('.');
-							obj[comma[k]] = operation.getNestedObject(myChunk[j],dot);
+							obj[comma[k]] = myChunk[j][comma[k]];
 						}
 						this.searchResult.push(obj); // push the resulting object into the array(result[])
 					}
@@ -62,11 +67,7 @@ var operation = {
 		}
 		return this;
 	},
-	getNestedObject: function(nestedObj, pathAr) { //This function returns the validity of objects with nested key
-		return pathAr.reduce((obj, key) => 
-			(obj && obj[key] !== 'undefined') ? obj[key] : undefined, nestedObj);
-	},
-	paginate: function(offset=0) { 
+	paginate: function(offset) { 
 		//Returns the object that is to be printed(with limit and offset)
 		var result = [];
 
@@ -81,7 +82,7 @@ var operation = {
 		return this;
 	},
 	get: function() {
-		return this.searchResult;
+		return JSON.stringify(this.searchResult);
 	},
 	checkOperation: function(objectValue,valueToBeSearched,operator) {
 		try {
@@ -114,10 +115,11 @@ var operation = {
 				}
 			} catch(err) {
 				throw err;
-			}		
+			}	
 		}
 	}
-
+//console.log(arrayObject);
 // Initialize the object
 operation.init(arrayObject);
-console.log(operation.order("ORDERBY age","desc").select("age",">","30","age,name,gender").paginate(45).get());
+var output = operation.select("company","like","isot","name,company");
+console.log(output.paginate(0).get());
